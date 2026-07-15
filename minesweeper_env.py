@@ -212,12 +212,12 @@ class MinesweeperEnv(gym.Env):
         # ---------------------------------------------------------------
         # Box = espaço contínuo (valores de ponto flutuante)
         # shape = (1, board_size, board_size) — uma matriz 3D para suportar CnnPolicy (Canal de Imagem)
-        # low=0.0, high=1.0 — todos os valores normalizados neste intervalo
+        # low=0, high=255 — O sb3 exige formato de imagem real (uint8 de 0 a 255)
         self.observation_space = spaces.Box(
-            low=0.0,
-            high=1.0,
+            low=0,
+            high=255,
             shape=(1, self.board_size, self.board_size),
-            dtype=np.float32
+            dtype=np.uint8
         )
 
         # ---------------------------------------------------------------
@@ -287,8 +287,10 @@ class MinesweeperEnv(gym.Env):
         # Minas → 1.0
         normalized[board == MINE] = 1.0
 
-        # Para CnnPolicy, adicionamos uma dimensão extra "canal" -> (1, board_size, board_size)
-        return np.expand_dims(normalized, axis=0)
+        # Para CnnPolicy, o SB3 exige formato de imagem (uint8, 0-255). 
+        # Ele vai dividir por 255 lá dentro automaticamente.
+        img = (np.expand_dims(normalized, axis=0) * 255).astype(np.uint8)
+        return img
 
     def _get_action_mask(self):
         """
