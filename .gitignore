@@ -1,0 +1,23 @@
+# Repositorio clonado (referencia, nao faz parte do projeto)
+gym-minesweeper/
+
+# Modelos treinados (muito grandes para git)
+models/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Graficos gerados (serao regenerados ao rodar)
+graficos/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
