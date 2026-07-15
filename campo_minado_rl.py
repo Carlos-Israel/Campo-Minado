@@ -278,7 +278,7 @@ PPO_HYPERPARAMS = {
     "clip_range": 0.2,        # Limita o quanto a politica pode mudar por atualizacao
 }
 
-TOTAL_TIMESTEPS_PPO = 200_000  # Total de passos de treinamento
+TOTAL_TIMESTEPS_PPO = 500_000  # Total de passos de treinamento
 
 print(f"\nHiperparametros do PPO:")
 for key, value in PPO_HYPERPARAMS.items():
@@ -308,7 +308,7 @@ ppo_callback = TrainingMetricsCallback(
 start_time_ppo = time.time()
 
 model_ppo = MaskablePPO(
-    "MlpPolicy",
+    "CnnPolicy",
     train_env_ppo,
     verbose=0,
     **PPO_HYPERPARAMS
@@ -408,7 +408,7 @@ A2C_HYPERPARAMS = {
     "ent_coef": 0.01,         # Entropia para exploracao
 }
 
-TOTAL_TIMESTEPS_A2C = 200_000
+TOTAL_TIMESTEPS_A2C = 500_000
 
 print(f"\nHiperparametros do A2C:")
 for key, value in A2C_HYPERPARAMS.items():
@@ -432,7 +432,7 @@ a2c_callback = TrainingMetricsCallbackStandard(
 start_time_a2c = time.time()
 
 model_a2c = A2C(
-    "MlpPolicy",
+    "CnnPolicy",
     train_env_a2c,
     verbose=0,
     **A2C_HYPERPARAMS
@@ -496,7 +496,7 @@ def objective(trial):
     opt_env = make_env()
     try:
         model = MaskablePPO(
-            "MlpPolicy",
+            "CnnPolicy",
             opt_env,
             learning_rate=learning_rate,
             n_steps=n_steps,
@@ -579,13 +579,13 @@ best_callback = TrainingMetricsCallback(
 start_time_best = time.time()
 
 model_best = MaskablePPO(
-    "MlpPolicy",
+    "CnnPolicy",
     train_env_best,
     verbose=0,
     **best_params
 )
 
-TOTAL_TIMESTEPS_BEST = 200_000
+TOTAL_TIMESTEPS_BEST = 500_000
 model_best.learn(total_timesteps=TOTAL_TIMESTEPS_BEST, callback=best_callback)
 
 time_best = time.time() - start_time_best

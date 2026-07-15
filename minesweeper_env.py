@@ -211,12 +211,12 @@ class MinesweeperEnv(gym.Env):
         # ESPAÇO DE OBSERVAÇÃO
         # ---------------------------------------------------------------
         # Box = espaço contínuo (valores de ponto flutuante)
-        # shape = (board_size, board_size) — uma matriz 2D
+        # shape = (1, board_size, board_size) — uma matriz 3D para suportar CnnPolicy (Canal de Imagem)
         # low=0.0, high=1.0 — todos os valores normalizados neste intervalo
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,
-            shape=(self.board_size, self.board_size),
+            shape=(1, self.board_size, self.board_size),
             dtype=np.float32
         )
 
@@ -287,7 +287,8 @@ class MinesweeperEnv(gym.Env):
         # Minas → 1.0
         normalized[board == MINE] = 1.0
 
-        return normalized
+        # Para CnnPolicy, adicionamos uma dimensão extra "canal" -> (1, board_size, board_size)
+        return np.expand_dims(normalized, axis=0)
 
     def _get_action_mask(self):
         """
@@ -373,7 +374,7 @@ class MinesweeperEnv(gym.Env):
             observation = self._normalize_board(self.visible_board)
             self.action_mask = self._get_action_mask()
             info = {"action_mask": self.action_mask}
-            return observation, -1.0, False, False, info
+            return observation, -2.0, False, False, info
 
         # ---------------------------------------------------------------
         # CASO 2: Pisou numa mina! (GAME OVER)
@@ -410,13 +411,13 @@ class MinesweeperEnv(gym.Env):
         # teria dificuldade de aprender, porque vitórias são raras no início.
         # Reward shaping dá "dicas" intermediárias para guiar o aprendizado.
 
-        # Recompensa base: +1.0 por célula segura revelada
-        reward = 1.0
+        # Recompensa base: +2.0 por célula segura revelada (Reward Shaping melhorado)
+        reward = 2.0
 
-        # Bônus por cascata: +0.3 por cada célula extra aberta
+        # Bônus por cascata: +1.0 por cada célula extra aberta
         # Isso ensina o agente que clicar em áreas com 0 vizinhas é vantajoso
         if cells_opened > 1:
-            reward += 0.3 * (cells_opened - 1)
+            reward += 1.0 * (cells_opened - 1)
 
         # ---------------------------------------------------------------
         # VERIFICAÇÃO DE VITÓRIA
@@ -427,7 +428,7 @@ class MinesweeperEnv(gym.Env):
 
         if closed_cells == self.num_mines:
             # VITÓRIA! Bônus grande.
-            reward += 10.0
+            reward += 20.0
             observation = self._normalize_board(self.visible_board)
             self.action_mask = self._get_action_mask()
             info = {"action_mask": self.action_mask}
