@@ -32,6 +32,10 @@ import os
 import warnings
 warnings.filterwarnings('ignore')  # Limpa warnings durante treinamento
 
+import torch
+import torch.nn as nn
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+
 # Importa nosso ambiente customizado
 from minesweeper_env import MinesweeperEnv
 
@@ -285,6 +289,36 @@ for key, value in PPO_HYPERPARAMS.items():
     print(f"  {key}: {value}")
 print(f"\nTotal de timesteps: {TOTAL_TIMESTEPS_PPO:,}")
 
+class CustomCNN(BaseFeaturesExtractor):
+    """
+    Rede Neural Convolucional customizada para tabuleiros pequenos (5x5).
+    O CnnPolicy padrao do SB3 foi feito para jogos de Atari (84x84) e usa
+    filtros muito grandes (8x8) que dao erro no nosso tabuleiro pequeno.
+    """
+    def __init__(self, observation_space, features_dim=128):
+        super().__init__(observation_space, features_dim)
+        n_input_channels = observation_space.shape[0]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+        
+        with torch.no_grad():
+            sample_obs = torch.as_tensor(observation_space.sample()[None]).float()
+            n_flatten = self.cnn(sample_obs).shape[1]
+            
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+
+    def forward(self, observations):
+        return self.linear(self.cnn(observations))
+
+policy_kwargs = dict(
+    features_extractor_class=CustomCNN,
+    features_extractor_kwargs=dict(features_dim=128),
+)
 
 # Cria o ambiente com action masking
 def make_env():
@@ -311,6 +345,7 @@ model_ppo = MaskablePPO(
     "CnnPolicy",
     train_env_ppo,
     verbose=0,
+    policy_kwargs=policy_kwargs,
     **PPO_HYPERPARAMS
 )
 
@@ -435,6 +470,7 @@ model_a2c = A2C(
     "CnnPolicy",
     train_env_a2c,
     verbose=0,
+    policy_kwargs=policy_kwargs,
     **A2C_HYPERPARAMS
 )
 
@@ -500,12 +536,13 @@ def objective(trial):
             opt_env,
             learning_rate=learning_rate,
             n_steps=n_steps,
+            batch_size=batch_size,
+            n_epochs=n_epochs,
             gamma=gamma,
             ent_coef=ent_coef,
             clip_range=clip_range,
-            n_epochs=n_epochs,
-            batch_size=batch_size,
             verbose=0,
+            policy_kwargs=policy_kwargs,
         )
 
         # Treina com menos timesteps para agilizar a busca
@@ -582,6 +619,7 @@ model_best = MaskablePPO(
     "CnnPolicy",
     train_env_best,
     verbose=0,
+    policy_kwargs=policy_kwargs,
     **best_params
 )
 
