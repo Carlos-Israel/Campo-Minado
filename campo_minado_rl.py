@@ -195,7 +195,7 @@ print("  SECAO 4: TREINAMENTO COM PPO")
 print("=" * 60)
 
 from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, CallbackList
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
@@ -351,7 +351,15 @@ model_ppo = MaskablePPO(
     **PPO_HYPERPARAMS
 )
 
-model_ppo.learn(total_timesteps=TOTAL_TIMESTEPS_PPO, callback=ppo_callback)
+# Cria o CheckpointCallback para salvar de tempos em tempos
+checkpoint_callback_ppo = CheckpointCallback(
+    save_freq=50_000,
+    save_path="./models/checkpoints_ppo/",
+    name_prefix="ppo_model"
+)
+callback_list_ppo = CallbackList([ppo_callback, checkpoint_callback_ppo])
+
+model_ppo.learn(total_timesteps=TOTAL_TIMESTEPS_PPO, callback=callback_list_ppo)
 
 time_ppo = time.time() - start_time_ppo
 print(f"\nTreinamento PPO concluido em {time_ppo:.1f} segundos ({time_ppo/60:.1f} min)")
@@ -476,7 +484,15 @@ model_a2c = A2C(
     **A2C_HYPERPARAMS
 )
 
-model_a2c.learn(total_timesteps=TOTAL_TIMESTEPS_A2C, callback=a2c_callback)
+# Checkpoint para A2C
+checkpoint_callback_a2c = CheckpointCallback(
+    save_freq=50_000,
+    save_path="./models/checkpoints_a2c/",
+    name_prefix="a2c_model"
+)
+callback_list_a2c = CallbackList([a2c_callback, checkpoint_callback_a2c])
+
+model_a2c.learn(total_timesteps=TOTAL_TIMESTEPS_A2C, callback=callback_list_a2c)
 
 time_a2c = time.time() - start_time_a2c
 print(f"\nTreinamento A2C concluido em {time_a2c:.1f} segundos ({time_a2c/60:.1f} min)")
@@ -588,7 +604,12 @@ N_TRIALS = 20  # Numero de combinacoes a testar (aumente para resultados melhore
 print(f"\nIniciando busca com {N_TRIALS} trials...")
 print("Cada trial treina um modelo com hiperparametros diferentes.\n")
 
-study = optuna.create_study(direction="maximize")  # Queremos MAXIMIZAR win rate
+study = optuna.create_study(
+    direction="maximize",
+    storage="sqlite:///optuna_study_minesweeper.db",
+    load_if_exists=True,
+    study_name="minesweeper_hyperparams"
+)  # Salva o progresso no banco de dados para poder continuar de onde parou
 study.optimize(objective, n_trials=N_TRIALS, show_progress_bar=False)
 
 print(f"\n--- Resultado da Otimizacao ---")
@@ -626,7 +647,15 @@ model_best = MaskablePPO(
 )
 
 TOTAL_TIMESTEPS_BEST = 500_000
-model_best.learn(total_timesteps=TOTAL_TIMESTEPS_BEST, callback=best_callback)
+# Checkpoint para o modelo FINAL
+checkpoint_callback_best = CheckpointCallback(
+    save_freq=50_000,
+    save_path="./models/checkpoints_best/",
+    name_prefix="best_model"
+)
+callback_list_best = CallbackList([best_callback, checkpoint_callback_best])
+
+model_best.learn(total_timesteps=TOTAL_TIMESTEPS_BEST, callback=callback_list_best)
 
 time_best = time.time() - start_time_best
 print(f"\nTreinamento do modelo otimizado concluido em {time_best:.1f}s ({time_best/60:.1f} min)")
