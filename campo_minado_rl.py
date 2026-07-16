@@ -54,8 +54,8 @@ print("\n" + "=" * 60)
 print("  SECAO 2: ENTENDENDO O AMBIENTE")
 print("=" * 60)
 
-# Cria o ambiente com tabuleiro 5x5 e 3 minas
-env = MinesweeperEnv(board_size=5, num_mines=3, render_mode="human")
+# Cria o ambiente com tabuleiro 9x9 e 10 minas
+env = MinesweeperEnv(board_size=9, num_mines=10, render_mode="human")
 obs, info = env.reset(seed=42)
 
 print("\n--- O que o agente 've' (observacao) ---")
@@ -67,10 +67,10 @@ print(obs)
 
 print("\n--- Espacos do ambiente ---")
 print(f"Espaco de observacao: {env.observation_space}")
-print(f"  -> Matriz {env.board_size}x{env.board_size} com valores entre 0.0 e 1.0")
+print(f"  -> Matriz {env.board_size}x{env.board_size} com {env.n_channels} canais one-hot (categorico)")
 print(f"Espaco de acao: {env.action_space}")
 print(f"  -> Um numero inteiro de 0 a {env.action_space.n - 1}")
-print(f"  -> Cada numero mapeia para uma celula: acao 7 = linha {7 // 5}, coluna {7 % 5}")
+print(f"  -> Cada numero mapeia para uma celula: acao 7 = linha {7 // 9}, coluna {7 % 9}")
 
 print("\n--- Mascara de acoes (action mask) ---")
 print(f"Total de acoes validas: {info['action_mask'].sum()} de {env.action_space.n}")
@@ -78,8 +78,8 @@ print("A mascara impede o agente de clicar em celulas ja abertas.")
 
 # Demonstra uma jogada
 print("\n--- Demonstrando uma jogada ---")
-action = 12  # Centro do tabuleiro (linha 2, coluna 2)
-print(f"Acao escolhida: {action} -> celula ({action // 5}, {action % 5})")
+action = 40  # Centro do tabuleiro 9x9 (linha 4, coluna 4)
+print(f"Acao escolhida: {action} -> celula ({action // 9}, {action % 9})")
 obs, reward, terminated, truncated, info = env.step(action)
 print(f"Recompensa recebida: {reward:+.1f}")
 print(f"Jogo terminou? {terminated}")
@@ -142,8 +142,8 @@ def evaluate_random_agent(env, num_episodes=1000):
         total_rewards.append(episode_reward)
         cells_opened_list.append(cells_opened)
 
-        # Verifica se venceu (recompensa > 10 indica vitoria)
-        if episode_reward > 10:
+        # Verifica se venceu (reward > 5 indica bonus de vitoria)
+        if reward > 5:
             wins += 1
 
     results = {
@@ -157,7 +157,7 @@ def evaluate_random_agent(env, num_episodes=1000):
 
 
 print("\nAvaliando agente aleatorio em 1000 partidas...")
-env_eval = MinesweeperEnv(board_size=5, num_mines=3)
+env_eval = MinesweeperEnv(board_size=9, num_mines=10)
 random_results = evaluate_random_agent(env_eval, num_episodes=1000)
 
 print(f"\n--- Resultados do Agente Aleatorio ---")
@@ -572,7 +572,7 @@ def objective(trial):
         return 0.0
 
     # Avalia o modelo treinado
-    eval_env = MinesweeperEnv(board_size=5, num_mines=3)
+    eval_env = MinesweeperEnv(board_size=9, num_mines=10)
     wins = 0
     n_eval = 200
 
@@ -590,7 +590,7 @@ def objective(trial):
             done = terminated or truncated
             ep_reward += reward
 
-        if ep_reward > 10:
+        if reward > 5:
             wins += 1
 
     win_rate = wins / n_eval * 100
@@ -707,7 +707,7 @@ def evaluate_trained_agent(model, env, num_episodes=1000, use_mask=True):
 
         total_rewards.append(ep_reward)
         cells_opened_list.append(cells)
-        if ep_reward > 10:
+        if reward > 5:
             wins += 1
 
     return {
@@ -720,7 +720,7 @@ def evaluate_trained_agent(model, env, num_episodes=1000, use_mask=True):
 
 print("\nAvaliando todos os agentes em 1000 partidas cada...\n")
 
-eval_env = MinesweeperEnv(board_size=5, num_mines=3)
+eval_env = MinesweeperEnv(board_size=9, num_mines=10)
 
 # Avalia cada agente
 print("Avaliando agente aleatorio...")
@@ -785,7 +785,7 @@ for bar, val in zip(bars2, avg_rewards):
                  bar.get_height() + (0.5 if val >= 0 else -1.5),
                  f'{val:+.1f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
 
-plt.suptitle('Comparacao: Agentes de RL no Campo Minado (5x5, 3 minas)',
+plt.suptitle('Comparacao: Agentes de RL no Campo Minado (9x9, 10 minas)',
              fontsize=16, fontweight='bold', y=1.02)
 plt.tight_layout()
 plt.savefig('graficos/comparacao_agentes.png', dpi=150, bbox_inches='tight')
@@ -893,7 +893,7 @@ print("\n" + "=" * 60)
 print("  SECAO 9: DEMONSTRACAO DE PARTIDAS")
 print("=" * 60)
 
-demo_env = MinesweeperEnv(board_size=5, num_mines=3, render_mode="human")
+demo_env = MinesweeperEnv(board_size=9, num_mines=10, render_mode="human")
 
 for game_num in range(3):
     print(f"\n{'='*40}")
@@ -921,7 +921,7 @@ for game_num in range(3):
         print(f"\nPasso {step}: clicou em ({x}, {y}) -> recompensa: {reward:+.1f}")
         demo_env.render()
 
-    resultado = "VITORIA!" if total_reward > 10 else "DERROTA!"
+    resultado = "VITORIA!" if reward > 5 else "DERROTA!"
     print(f"\n-> {resultado} Recompensa total: {total_reward:.1f}")
 
 demo_env.close()

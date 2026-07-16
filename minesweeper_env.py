@@ -192,13 +192,13 @@ class MinesweeperEnv(gym.Env):
 
     metadata = {"render_modes": ["ansi", "human"], "render_fps": 4}
 
-    def __init__(self, board_size=5, num_mines=3, render_mode=None):
+    def __init__(self, board_size=9, num_mines=10, render_mode=None):
         """
         Inicializa o ambiente.
 
         Parâmetros:
-            board_size (int): tamanho do tabuleiro (default: 5 para treino rápido)
-            num_mines (int): número de minas (default: 3)
+            board_size (int): tamanho do tabuleiro (default: 9 para nível clássico)
+            num_mines (int): número de minas (default: 10)
             render_mode (str): "ansi" para texto, "human" para visualização
         """
         super().__init__()
@@ -208,16 +208,27 @@ class MinesweeperEnv(gym.Env):
         self.render_mode = render_mode
 
         # ---------------------------------------------------------------
-        # ESPAÇO DE OBSERVAÇÃO
+        # ESPAÇO DE OBSERVAÇÃO (One-Hot Encoding Categórico)
         # ---------------------------------------------------------------
-        # Box = espaço contínuo (valores de ponto flutuante)
-        # shape = (1, board_size, board_size) — uma matriz 3D para suportar CnnPolicy (Canal de Imagem)
-        # low=0, high=255 — O sb3 exige formato de imagem real (uint8 de 0 a 255)
+        # Cada célula do tabuleiro pode ter 11 estados possíveis:
+        #   Canal 0:  CLOSED (célula fechada)
+        #   Canal 1:  0 vizinhas
+        #   Canal 2:  1 vizinha
+        #   ...
+        #   Canal 9:  8 vizinhas
+        #   Canal 10: MINE (mina revelada)
+        #
+        # POR QUE ONE-HOT EM VEZ DE VALOR CONTÍNUO?
+        # Se usarmos 1 canal com valores 0.1, 0.2, ..., 0.9, a CNN
+        # interpreta "4 vizinhas" (0.5) como o dobro de "2 vizinhas" (0.3).
+        # Mas no Campo Minado, esses números são CATEGORIAS, não quantidades.
+        # One-hot encoding elimina essa relação numérica falsa.
+        self.n_channels = 11  # CLOSED + 0-8 vizinhas + MINE
         self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(1, self.board_size, self.board_size),
-            dtype=np.uint8
+            low=0.0,
+            high=1.0,
+            shape=(self.n_channels, self.board_size, self.board_size),
+            dtype=np.float32
         )
 
         # ---------------------------------------------------------------
@@ -261,36 +272,40 @@ class MinesweeperEnv(gym.Env):
 
     def _normalize_board(self, board):
         """
-        Normaliza o tabuleiro para valores entre 0 e 1.
+        Converte o tabuleiro em representação one-hot categórica.
 
-        POR QUE NORMALIZAR?
-        Redes neurais aprendem melhor quando os inputs estão numa faixa padrão.
-        Sem normalização, valores como -2 e +1000 confundem o treinamento.
+        POR QUE ONE-HOT?
+        No Campo Minado, os números 0-8 são CATEGORIAS, não quantidades.
+        "4 vizinhas" não é "o dobro" de "2 vizinhas" — são informações
+        qualitativamente diferentes. One-hot encoding preserva isso.
 
-        Mapeamento:
-            CLOSED (-2) → 0.0
-            0 vizinhas   → 0.1
-            1 vizinha    → 0.2
+        Mapeamento (cada estado vira um canal binário):
+            Canal 0:  1.0 se CLOSED, 0.0 caso contrário
+            Canal 1:  1.0 se 0 vizinhas, 0.0 caso contrário
+            Canal 2:  1.0 se 1 vizinha, 0.0 caso contrário
             ...
-            8 vizinhas   → 0.9
-            MINE (-1)    → 1.0
+            Canal 9:  1.0 se 8 vizinhas, 0.0 caso contrário
+            Canal 10: 1.0 se MINE, 0.0 caso contrário
+
+        Retorna:
+            np.array shape (11, board_size, board_size), dtype float32
         """
-        normalized = np.zeros_like(board, dtype=np.float32)
+        one_hot = np.zeros(
+            (self.n_channels, self.board_size, self.board_size),
+            dtype=np.float32
+        )
 
-        # Células fechadas → 0.0
-        normalized[board == CLOSED] = 0.0
+        # Canal 0: células fechadas
+        one_hot[0][board == CLOSED] = 1.0
 
-        # Células abertas (0-8 vizinhas) → 0.1 a 0.9
+        # Canais 1-9: número de vizinhas (0 a 8)
         for i in range(9):
-            normalized[board == i] = (i + 1) / 10.0
+            one_hot[i + 1][board == i] = 1.0
 
-        # Minas → 1.0
-        normalized[board == MINE] = 1.0
+        # Canal 10: mina revelada
+        one_hot[10][board == MINE] = 1.0
 
-        # Para CnnPolicy, o SB3 exige formato de imagem (uint8, 0-255). 
-        # Ele vai dividir por 255 lá dentro automaticamente.
-        img = (np.expand_dims(normalized, axis=0) * 255).astype(np.uint8)
-        return img
+        return one_hot
 
     def _get_action_mask(self):
         """
@@ -535,7 +550,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # Cria o ambiente
-    env = MinesweeperEnv(board_size=5, num_mines=3, render_mode="human")
+    env = MinesweeperEnv(board_size=9, num_mines=10, render_mode="human")
     obs, info = env.reset()
 
     print("\nTabuleiro inicial (tudo fechado):")
@@ -574,7 +589,7 @@ if __name__ == "__main__":
     print("\n--- Verificando compatibilidade com Gymnasium ---")
     try:
         from gymnasium.utils.env_checker import check_env
-        test_env = MinesweeperEnv(board_size=5, num_mines=3)
+        test_env = MinesweeperEnv(board_size=9, num_mines=10)
         check_env(test_env, skip_render_check=True)
         print("[OK] Ambiente compativel com Gymnasium!")
     except Exception as e:
