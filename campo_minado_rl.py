@@ -252,7 +252,9 @@ class TrainingMetricsCallback(BaseCallback):
                     ep_reward += reward
 
                 total_rewards.append(ep_reward)
-                if ep_reward > 10:
+                # ANTI-HACK: Só conta vitória se o último passo deu mais de 5 pontos
+                # (bônus de vitória é +50)
+                if reward > 5:
                     wins += 1
 
             win_rate = wins / self.n_eval_episodes * 100
@@ -322,7 +324,7 @@ policy_kwargs = dict(
 
 # Cria o ambiente com action masking
 def make_env():
-    env = MinesweeperEnv(board_size=5, num_mines=3)
+    env = MinesweeperEnv(board_size=9, num_mines=10)
     env = ActionMasker(env, mask_fn)
     return env
 
@@ -331,7 +333,7 @@ print("\nIniciando treinamento PPO...")
 print("(Metricas serao exibidas a cada 5000 passos)\n")
 
 train_env_ppo = make_env()
-eval_env_ppo = MinesweeperEnv(board_size=5, num_mines=3)
+eval_env_ppo = MinesweeperEnv(board_size=9, num_mines=10)
 
 ppo_callback = TrainingMetricsCallback(
     eval_env=eval_env_ppo,
@@ -419,7 +421,7 @@ class TrainingMetricsCallbackStandard(BaseCallback):
                     steps += 1
 
                 total_rewards.append(ep_reward)
-                if ep_reward > 10:
+                if reward > 5:
                     wins += 1
 
             win_rate = wins / self.n_eval_episodes * 100
@@ -455,8 +457,8 @@ print("Iniciando treinamento A2C...")
 print("(Metricas serao exibidas a cada 5000 passos)\n")
 
 # A2C usa ambiente SEM action masking wrapper
-train_env_a2c = MinesweeperEnv(board_size=5, num_mines=3)
-eval_env_a2c = MinesweeperEnv(board_size=5, num_mines=3)
+train_env_a2c = MinesweeperEnv(board_size=9, num_mines=10)
+eval_env_a2c = MinesweeperEnv(board_size=9, num_mines=10)
 
 a2c_callback = TrainingMetricsCallbackStandard(
     eval_env=eval_env_a2c,
@@ -605,7 +607,7 @@ if best_params.get("batch_size", 64) > best_params.get("n_steps", 256):
     best_params["batch_size"] = best_params["n_steps"]
 
 train_env_best = make_env()
-eval_env_best = MinesweeperEnv(board_size=5, num_mines=3)
+eval_env_best = MinesweeperEnv(board_size=9, num_mines=10)
 
 best_callback = TrainingMetricsCallback(
     eval_env=eval_env_best,

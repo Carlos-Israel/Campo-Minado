@@ -387,9 +387,9 @@ class MinesweeperEnv(gym.Env):
             self.action_mask = self._get_action_mask()
             info = {"action_mask": self.action_mask}
 
-            # Recompensa: -10.0 (forte penalidade)
+            # Recompensa: -100.0 (forte penalidade)
             # terminated = True (o jogo acabou porque o agente perdeu)
-            return observation, -10.0, True, False, info
+            return observation, -100.0, True, False, info
 
         # ---------------------------------------------------------------
         # CASO 3: Célula segura!
@@ -430,7 +430,7 @@ class MinesweeperEnv(gym.Env):
 
         if closed_cells == self.num_mines:
             # VITÓRIA! Bônus grande.
-            reward += 20.0
+            reward += 50.0
             observation = self._normalize_board(self.visible_board)
             self.action_mask = self._get_action_mask()
             info = {"action_mask": self.action_mask}

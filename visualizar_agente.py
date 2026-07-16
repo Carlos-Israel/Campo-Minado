@@ -56,11 +56,11 @@ class CustomCNN(BaseFeaturesExtractor):
 # =============================================================================
 
 # Tamanho do tabuleiro
-BOARD_SIZE = 5
-NUM_MINES = 3
+BOARD_SIZE = 9
+NUM_MINES = 10
 
 # Dimensoes da janela
-CELL_SIZE = 80          # Tamanho de cada celula em pixels
+CELL_SIZE = 50          # Tamanho de cada celula em pixels
 MARGIN = 4              # Espaco entre celulas
 HEADER_HEIGHT = 120     # Altura do cabecalho com informacoes
 FOOTER_HEIGHT = 80      # Altura do rodape
@@ -265,8 +265,9 @@ class MinesweeperVisualizer:
         # Status
         speed_text = f"Vel: {self.speed}/s"
         auto_text = "AUTO" if self.auto_play else "MANUAL"
+        score = np.count_nonzero(self.env.visible_board >= 0)
         status = self.font_small.render(
-            f"Passo: {self.step_count}  |  Reward: {self.total_reward:+.1f}  |  {auto_text}  |  {speed_text}",
+            f"Passo: {self.step_count}  |  Pontos: {score}  |  Reward: {self.total_reward:+.1f}  |  {auto_text}  |  {speed_text}",
             True, COLORS["text_dim"]
         )
         self.screen.blit(status, (15, 80))
