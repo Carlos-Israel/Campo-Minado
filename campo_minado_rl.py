@@ -142,8 +142,9 @@ def evaluate_random_agent(env, num_episodes=1000):
         total_rewards.append(episode_reward)
         cells_opened_list.append(cells_opened)
 
-        # Verifica se venceu (reward > 5 indica bonus de vitoria)
-        if reward > 5:
+        # Vitória = jogo terminou E reward é positivo
+        # (mina dá -100, vitória dá +52 ou mais)
+        if terminated and reward > 0:
             wins += 1
 
     results = {
@@ -252,9 +253,8 @@ class TrainingMetricsCallback(BaseCallback):
                     ep_reward += reward
 
                 total_rewards.append(ep_reward)
-                # ANTI-HACK: Só conta vitória se o último passo deu mais de 5 pontos
-                # (bônus de vitória é +50)
-                if reward > 5:
+                # Vitória = jogo terminou (terminated) com reward positivo
+                if terminated and reward > 0:
                     wins += 1
 
             win_rate = wins / self.n_eval_episodes * 100
@@ -429,7 +429,7 @@ class TrainingMetricsCallbackStandard(BaseCallback):
                     steps += 1
 
                 total_rewards.append(ep_reward)
-                if reward > 5:
+                if terminated and reward > 0:
                     wins += 1
 
             win_rate = wins / self.n_eval_episodes * 100
@@ -590,7 +590,7 @@ def objective(trial):
             done = terminated or truncated
             ep_reward += reward
 
-        if reward > 5:
+        if terminated and reward > 0:
             wins += 1
 
     win_rate = wins / n_eval * 100
@@ -707,7 +707,7 @@ def evaluate_trained_agent(model, env, num_episodes=1000, use_mask=True):
 
         total_rewards.append(ep_reward)
         cells_opened_list.append(cells)
-        if reward > 5:
+        if terminated and reward > 0:
             wins += 1
 
     return {
@@ -921,7 +921,7 @@ for game_num in range(3):
         print(f"\nPasso {step}: clicou em ({x}, {y}) -> recompensa: {reward:+.1f}")
         demo_env.render()
 
-    resultado = "VITORIA!" if reward > 5 else "DERROTA!"
+    resultado = "VITORIA!" if (terminated and reward > 0) else "DERROTA!"
     print(f"\n-> {resultado} Recompensa total: {total_reward:.1f}")
 
 demo_env.close()
